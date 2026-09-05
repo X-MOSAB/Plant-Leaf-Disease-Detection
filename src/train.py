@@ -1,6 +1,6 @@
 import tensorflow as tf
 from pathlib import Path
-
+import json
 from dataset import train_dataset, validation_dataset
 from model import model
 
@@ -64,7 +64,19 @@ history = model.fit(
     epochs=EPOCHS,
     callbacks=callbacks
 )
+# =========================
+# Save Training History
+# =========================
 
+RESULTS_DIR = PROJECT_ROOT / "results"
+RESULTS_DIR.mkdir(exist_ok=True)
+
+history_path = RESULTS_DIR / "training_history.json"
+
+with open(history_path, "w") as f:
+    json.dump(history.history, f, indent=4)
+
+print(f"Training history saved to: {history_path}")
 
 # =========================
 # Save Final Model
