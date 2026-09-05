@@ -16,7 +16,6 @@ SEED = 42
 
 # =========================
 # Load Training Dataset
-# 80% of the data
 # =========================
 
 train_dataset = tf.keras.utils.image_dataset_from_directory(
@@ -31,8 +30,7 @@ train_dataset = tf.keras.utils.image_dataset_from_directory(
 
 
 # =========================
-# Load Validation + Test Pool
-# 20% of the data
+# Load Validation + Test
 # =========================
 
 validation_test_dataset = tf.keras.utils.image_dataset_from_directory(
@@ -44,12 +42,6 @@ validation_test_dataset = tf.keras.utils.image_dataset_from_directory(
     batch_size=BATCH_SIZE,
     shuffle=False,
 )
-
-
-# =========================
-# Split the 20% pool equally
-# 10% Validation + 10% Test
-# =========================
 
 total_batches = len(validation_test_dataset)
 test_batches = total_batches // 2
@@ -63,6 +55,84 @@ test_dataset = validation_test_dataset.skip(test_batches)
 # =========================
 
 class_names = train_dataset.class_names
+num_classes = len(class_names)
+
+
+# =========================
+# Data Augmentation
+# =========================
+
+data_augmentation = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    tf.keras.layers.RandomRotation(0.1),
+    tf.keras.layers.RandomZoom(0.1),
+    tf.keras.layers.RandomContrast(0.1),
+], name="data_augmentation")
+
+
+# =========================
+# Normalize Pixel Values
+# =========================
+
+normalization = tf.keras.layers.Rescaling(
+    1.0 / 255
+)
+
+
+# =========================
+# Prepare Train Dataset
+# =========================
+
+train_dataset = train_dataset.map(
+    lambda images, labels: (
+        data_augmentation(images, training=True),
+        labels
+    ),
+    num_parallel_calls=tf.data.AUTOTUNE
+)
+
+train_dataset = train_dataset.map(
+    lambda images, labels: (
+        normalization(images),
+        labels
+    ),
+    num_parallel_calls=tf.data.AUTOTUNE
+)
+
+
+# =========================
+# Prepare Validation Dataset
+# =========================
+
+validation_dataset = validation_dataset.map(
+    lambda images, labels: (
+        normalization(images),
+        labels
+    ),
+    num_parallel_calls=tf.data.AUTOTUNE
+)
+
+
+# =========================
+# Prepare Test Dataset
+# =========================
+
+test_dataset = test_dataset.map(
+    lambda images, labels: (
+        normalization(images),
+        labels
+    ),
+    num_parallel_calls=tf.data.AUTOTUNE
+)
+
+
+# =========================
+# Improve Performance
+# =========================
+
+train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
+validation_dataset = validation_dataset.prefetch(tf.data.AUTOTUNE)
+test_dataset = test_dataset.prefetch(tf.data.AUTOTUNE)
 
 
 # =========================
@@ -73,11 +143,7 @@ print("\n" + "=" * 50)
 print("DATASET INFORMATION")
 print("=" * 50)
 
-print(f"Number of classes: {len(class_names)}")
-
-print("\nClasses:")
-for index, class_name in enumerate(class_names):
-    print(f"{index}: {class_name}")
+print(f"Number of classes: {num_classes}")
 
 print("\nNumber of batches:")
 print(f"Train:      {len(train_dataset)}")
